@@ -14,36 +14,39 @@ A Python application with a dark minimal UI for sending automated job applicatio
 ## Setup
 
 1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 2. **Configure environment variables:**
-   - Copy `.env.example` to `.env`
-   - Fill in your details:
-     ```
-     SENDER_EMAIL_PROVIDER=gmail
-     SENDER_EMAIL=your_email@gmail.com
-     SENDER_PASSWORD=your_app_password
-     SENDER_NAME=Your Full Name
-     ```
+    - Copy `.env.example` to `.env`
+    - Fill in your details:
+        ```
+        SENDER_EMAIL_PROVIDER=gmail
+        SENDER_EMAIL=your_email@gmail.com
+        SENDER_PASSWORD=your_app_password
+        SENDER_NAME=Your Full Name
+        ```
 
 3. **For Gmail users:**
-   - Enable 2-factor authentication
-   - Generate an App Password: https://myaccount.google.com/apppasswords
-   - Use the App Password in `SENDER_PASSWORD`
+    - Enable 2-factor authentication
+    - Generate an App Password: https://myaccount.google.com/apppasswords
+    - Use the App Password in `SENDER_PASSWORD`
 
 4. **Add your resume:**
-   - Place your resume PDF in the `resume/` directory
+    - Place your resume PDF in the `resume/` directory
 
 ## Usage
 
 Run the application:
+
 ```bash
 python app.py
 ```
 
 Fill in the form:
+
 - **HR Email**: Recipient's email address
 - **Company**: Company name
 - **Position**: Job position you're applying for
@@ -92,4 +95,3 @@ EmailProviderFactory.register_provider('newprovider', NewProvider)
 - Subject line format: `Application {Your Name} - {Position}`
 - All templates are professional and customizable
 - Resume attachment is optional but recommended
-# HR-Email-Sender
