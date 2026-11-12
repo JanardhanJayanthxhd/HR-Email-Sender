@@ -7,26 +7,25 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
-from email_config import EmailProviderFactory
+from email_config import GmailProvider
 
 
 class EmailSender:
     """Handle email sending operations."""
 
-    def __init__(self, provider_name: str, email: str, password: str, sender_name: str):
-        """Initialize email sender with credentials.
+    def __init__(self, email: str, password: str, sender_name: str):
+        """Initialize email sender with Gmail credentials.
 
         Args:
-            provider_name: Email provider ('gmail' or 'outlook').
-            email: Sender email address.
-            password: Email account password or app password.
+            email: Sender Gmail address.
+            password: Gmail app password.
             sender_name: Sender's full name.
         """
         self.email = email
         self.password = password
         self.sender_name = sender_name
 
-        provider = EmailProviderFactory.get_provider(provider_name)
+        provider = GmailProvider()
         config = provider.get_smtp_config()
         self.smtp_server = config["smtp_server"]
         self.smtp_port = config["smtp_port"]

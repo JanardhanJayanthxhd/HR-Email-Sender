@@ -5,7 +5,7 @@ A Python application with a dark minimal UI for sending automated job applicatio
 ## Features
 
 - **Dark Minimal UI** using Tkinter
-- **Multiple Email Providers**: Supports Gmail and Outlook (extensible architecture)
+- **Gmail Integration**: Secure email sending via Gmail SMTP
 - **3 Email Template Variants**: Formal, Friendly Professional, and Concise
 - **Resume Attachment**: Automatically attach your PDF resume
 - **Dynamic Configuration**: Uses .env for credentials
@@ -23,7 +23,6 @@ A Python application with a dark minimal UI for sending automated job applicatio
     - Copy `.env.example` to `.env`
     - Fill in your details:
         ```
-        SENDER_EMAIL_PROVIDER=gmail
         SENDER_EMAIL=your_email@gmail.com
         SENDER_PASSWORD=your_app_password
         SENDER_NAME=Your Full Name
@@ -71,23 +70,6 @@ auto_email_sender/
 ├── resume/                # Place your PDF resume here
 │   └── README.md
 └── README.md
-```
-
-## Extending Email Providers
-
-To add a new email provider:
-
-```python
-# In email_config.py
-class NewProvider(EmailProvider):
-    def get_smtp_config(self):
-        return {
-            'smtp_server': 'smtp.newprovider.com',
-            'smtp_port': 587
-        }
-
-# Register it
-EmailProviderFactory.register_provider('newprovider', NewProvider)
 ```
 
 ## Notes

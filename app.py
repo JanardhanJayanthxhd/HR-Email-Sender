@@ -27,7 +27,6 @@ class EmailSenderApp:
 
         load_dotenv()
 
-        self.provider = os.getenv("SENDER_EMAIL_PROVIDER", "gmail")
         self.sender_email = os.getenv("SENDER_EMAIL", "")
         self.sender_password = os.getenv("SENDER_PASSWORD", "")
         self.sender_name = os.getenv("SENDER_NAME", "")
@@ -304,9 +303,7 @@ class EmailSenderApp:
         self.root.update()
 
         try:
-            sender = EmailSender(
-                self.provider, self.sender_email, self.sender_password, self.sender_name
-            )
+            sender = EmailSender(self.sender_email, self.sender_password, self.sender_name)
 
             subject = f"Application {self.sender_name} - {self.position_var.get()}"
 
