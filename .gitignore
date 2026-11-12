@@ -10,6 +10,12 @@ __pycache__/
 dist/
 build/
 resume/*.pdf
+resume/profile.md
+data/
+*.db
+.env
+.pytest_cache/
+.ruff_cache/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

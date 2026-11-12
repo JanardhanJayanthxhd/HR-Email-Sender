@@ -1,0 +1,1 @@
+"""Mailer module for sending emails via Gmail SMTP."""
