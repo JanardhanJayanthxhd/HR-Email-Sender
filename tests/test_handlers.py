@@ -2,7 +2,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.bot.handlers import handle_send_callback, start_command
+from src.bot.handlers import (
+    handle_message,
+    handle_send_callback,
+    handle_template_choice,
+    start_command,
+)
+from src.models import JobPost
 
 
 @pytest.mark.asyncio
@@ -65,3 +71,70 @@ async def test_handle_send_callback_enforces_daily_cap(tmp_path, monkeypatch):
         # Should show cap error, not send
         call_args = mock_update.callback_query.message.reply_text.call_args[0][0]
         assert "Daily send limit reached" in call_args
+
+
+@pytest.mark.asyncio
+async def test_handle_template_choice_renders_selected_template(monkeypatch):
+    with patch("src.bot.handlers.settings.allowed_user_id", 123):
+        mock_update = MagicMock()
+        mock_update.effective_user.id = 123
+        mock_update.callback_query.answer = AsyncMock()
+        mock_update.callback_query.data = "template_2"
+        mock_update.callback_query.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.callback_query.message
+        mock_context = MagicMock()
+        mock_context.user_data = {
+            "pending_application": {
+                "job_post": JobPost(
+                    company="Acme",
+                    role="Frontend Developer",
+                    hr_email="hr@acme.com",
+                ),
+            }
+        }
+
+        await handle_template_choice(mock_update, mock_context)
+
+        mock_update.callback_query.answer.assert_awaited_once()
+        mock_update.callback_query.message.reply_text.assert_awaited_once()
+        message = mock_update.callback_query.message.reply_text.call_args.args[0]
+        assert "2. Straightforward" in message
+        assert "Frontend Developer" in message
+        assert "[redacted]" in message
+        assert "pending_application" not in mock_context.user_data
+
+
+@pytest.mark.asyncio
+async def test_handle_message_prompts_for_template_without_profile():
+    job_text = "Acme is hiring a developer. Contact: hr@acme.com."
+    job_post = JobPost(
+        company="Acme",
+        role="Python Developer",
+        hr_email="hr@acme.com",
+    )
+    mock_llm = object()
+
+    with patch("src.bot.handlers.settings.allowed_user_id", 123), \
+         patch("src.bot.handlers.get_llm", return_value=mock_llm), \
+         patch(
+             "src.bot.handlers.extract_job_post",
+             new_callable=AsyncMock,
+             return_value=job_post,
+         ) as mock_extract:
+        mock_update = MagicMock()
+        mock_update.effective_user.id = 123
+        mock_update.message.text = job_text
+        mock_update.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.message
+        mock_context = MagicMock()
+        mock_context.user_data = {}
+
+        await handle_message(mock_update, mock_context)
+
+        mock_extract.assert_awaited_once_with(job_text, mock_llm)
+        assert "Role selected based on your Python/backend/AI experience: Python Developer" in (
+            mock_update.message.reply_text.call_args_list[-1].args[0]
+        )
+        assert mock_context.user_data["pending_application"] == {"job_post": job_post}
+        keyboard = mock_update.message.reply_text.call_args_list[-1].kwargs["reply_markup"]
+        assert keyboard.inline_keyboard[0][0].callback_data == "template_1"

@@ -15,6 +15,7 @@ def main() -> None:
         handle_resume_choice,
         handle_send_callback,
         handle_skip_callback,
+        handle_template_choice,
         help_command,
         resume_command,
         start_command,
@@ -49,6 +50,7 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(handle_skip_callback, pattern="^skip_"))
     app.add_handler(CallbackQueryHandler(handle_email_choice, pattern="^email_"))
     app.add_handler(CallbackQueryHandler(handle_resume_choice, pattern="^resume_"))
+    app.add_handler(CallbackQueryHandler(handle_template_choice, pattern="^template_"))
 
     log.info("Bot starting", provider=settings.llm_provider, model=settings.llm_model)
 

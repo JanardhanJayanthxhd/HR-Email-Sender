@@ -36,6 +36,5 @@ class Settings(BaseSettings):
     # Paths
     resume_dir: Path = PROJECT_ROOT / "resume"
     database_path: Path = PROJECT_ROOT / "data" / "applications.db"
-    profile_path: Path = PROJECT_ROOT / "resume" / "profile.md"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

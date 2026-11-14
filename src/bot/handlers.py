@@ -7,12 +7,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.bot.auth import authorized_only
-from src.bot.keyboards import approval_keyboard, resume_choice_keyboard
+from src.bot.keyboards import approval_keyboard, email_template_keyboard, resume_choice_keyboard
 from src.config import Settings
-from src.llm.drafter import draft_email, format_email_body
 from src.llm.extractor import extract_job_post
 from src.llm.factory import get_llm
 from src.logger import log
+from src.mailer.email_templates import EMAIL_TEMPLATES, render_email_template
 from src.mailer.gmail import send_email
 from src.storage.db import get_daily_send_count, init_db, insert_application
 
@@ -61,9 +61,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 **How to use:**
 1. Paste a LinkedIn job post
-2. I'll extract company, role, and HR email
-3. Review the draft email
-4. Tap Send to send it
+2. I'll select one role that best matches your Python/backend/AI experience
+3. Choose an email template
+4. Review, edit, send, or skip the email
 
 **Commands:**
 /start - Start the bot
@@ -101,94 +101,116 @@ async def resume_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @authorized_only(settings)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle incoming job post text."""
-    log.info(f"User message: {update.message.text}")
+    message = update.effective_message
+    if message is None or message.text is None:
+        log.warning("Ignored Telegram update without text")
+        if message is not None:
+            await message.reply_text("Please send the job post as text.")
+        return
+
+    job_text = message.text
+    log.info("Received job post text", character_count=len(job_text))
     # Check if in edit mode
     if context.user_data.get("waiting_for_edit"):
         draft_id = context.user_data["waiting_for_edit"]
         draft_data = context.user_data[draft_id]
-        draft_data["body"] = format_email_body(
-            update.message.text, settings.sender_name, settings.reply_to_email
-        )
+        draft_data["body"] = job_text
         context.user_data["waiting_for_edit"] = None
 
-        await update.message.reply_text(
+        await message.reply_text(
             f"📧 **Updated Draft**\n\n**Subject:** {draft_data['subject']}\n\n{draft_data['body']}",
             reply_markup=approval_keyboard(draft_id),
         )
         return
 
-    job_text = update.message.text
-
     # Check for multiple job posts
     if job_text.count("@") > 3 or len(job_text) > 3000:
-        await update.message.reply_text(
+        await message.reply_text(
             "⚠️ Found multiple job posts. Please send them one at a time."
         )
         return
 
-    await update.message.reply_text("🔍 Extracting details...")
+    await message.reply_text("🔍 Extracting details...")
 
     try:
-        # Get LLM
-        llm = get_llm(settings)
-
-        # Extract job post
-        job_post = await extract_job_post(job_text, llm)
+        job_post = await extract_job_post(job_text, get_llm(settings))
         log.info("Extracted job post details")
 
         if not job_post:
-            await update.message.reply_text(
+            await message.reply_text(
                 "❌ No email address found in the job post. Please check and try again."
             )
             return
 
-        # Validate email format (Review Focus #5)
         try:
             validate_email(job_post.hr_email)
         except EmailNotValidError:
             log.warning("Extracted HR email failed format validation")
-            await update.message.reply_text(f"❌ Invalid email address format: {job_post.hr_email}")
+            await message.reply_text("❌ Invalid email address format in the job post.")
             return
 
-        # Load profile
-        profile_path = settings.profile_path
-        if profile_path.exists():
-            profile_content = profile_path.read_text()
-        else:
-            profile_content = "Python developer with 1 year experience."
-
-        # Draft email
-        draft = await draft_email(
-            job_post, profile_content, settings.sender_name, settings.reply_to_email, llm
-        )
-
-        log.info("Drafted application email")
-        # Store draft
-        draft_id = str(uuid.uuid4())[:8]
-        context.user_data[draft_id] = {
-            "job_post": job_post,
-            "subject": draft.subject,
-            "body": draft.body,
-        }
-
-        # Show draft
-        await update.message.reply_text(
-            f"📋 **Job Details:**\n"
-            f"Company: {job_post.company}\n"
-            f"Role: {job_post.role}\n"
-            f"HR: {job_post.hr_email}\n\n"
-            f"📧 **Draft Email:**\n\n"
-            f"**Subject:** {draft.subject}\n\n"
-            f"{draft.body}",
-            reply_markup=approval_keyboard(draft_id),
+        context.user_data["pending_application"] = {"job_post": job_post}
+        await message.reply_text(
+            f"Role selected based on your Python/backend/AI experience: {job_post.role}\n\n"
+            f"Choose an email template (1-{len(EMAIL_TEMPLATES)}):",
+            reply_markup=email_template_keyboard(),
         )
 
     except Exception:
         log.exception("Failed to process job post")
-        await update.message.reply_text(
+        await message.reply_text(
             "❌ Failed to process the job post.\n\n"
             "Please try rephrasing or check the job post format."
         )
+
+
+@authorized_only(settings)
+async def handle_template_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Render the user's selected email template for the pending application."""
+    query = update.callback_query
+    await query.answer()
+
+    pending = context.user_data.get("pending_application")
+    if not pending:
+        await query.message.reply_text(
+            "❌ This template selection expired. Send the job post again."
+        )
+        return
+
+    try:
+        template_number = int(query.data.removeprefix("template_"))
+        job_post = pending["job_post"]
+        draft = render_email_template(
+            template_number,
+            company=job_post.company,
+            role=job_post.role,
+        )
+    except (ValueError, KeyError):
+        log.warning("Invalid or incomplete email template selection")
+        await query.message.reply_text(
+            "❌ Invalid template selection. Please send the job post again."
+        )
+        return
+
+    draft_id = str(uuid.uuid4())[:8]
+    context.user_data[draft_id] = {
+        "job_post": job_post,
+        "subject": draft.subject,
+        "body": draft.body,
+    }
+    del context.user_data["pending_application"]
+
+    await query.message.reply_text(
+        f"📋 **Job Details:**\n"
+        f"Company: {job_post.company}\n"
+        f"Role: {job_post.role}\n"
+        f"HR: {job_post.hr_email}\n\n"
+        f"📧 **Draft Email ({template_number}. "
+        f"{EMAIL_TEMPLATES[template_number - 1].name}):**\n\n"
+        f"**Subject:** {draft.subject}\n\n"
+        f"{draft.body}",
+        reply_markup=approval_keyboard(draft_id),
+    )
 
 
 @authorized_only(settings)

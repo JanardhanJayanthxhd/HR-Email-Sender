@@ -8,8 +8,6 @@ class JobPost(BaseModel):
 
     company: str = Field(min_length=1, description="Company name")
     role: str = Field(min_length=1, description="Job role/title")
-    requirements_summary: str = Field(min_length=1, description="Short requirements summary")
-    key_requirements: list[str] = Field(default_factory=list)
     hr_email: str = Field(min_length=3)
 
 

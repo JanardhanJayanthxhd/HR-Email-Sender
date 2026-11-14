@@ -15,8 +15,6 @@ async def test_extract_job_post_success():
     mock_structured.ainvoke.return_value = JobPost(
         company="Acme Corp",
         role="Python Developer",
-        requirements_summary="Need FastAPI and Docker experience",
-        key_requirements=["FastAPI", "Docker"],
         hr_email="hr@acme.com",
     )
     mock_llm.with_structured_output.return_value = mock_structured
@@ -27,6 +25,9 @@ async def test_extract_job_post_success():
     assert result.role == "Python Developer"
     assert result.hr_email == "hr@acme.com"
     mock_llm.with_structured_output.assert_called_once()
+    prompt = mock_structured.ainvoke.await_args.args[0]
+    assert "key_requirements" not in prompt
+    assert "applicant profile" not in prompt.lower()
 
 
 @pytest.mark.asyncio
@@ -39,8 +40,6 @@ async def test_extract_rejects_email_not_in_candidates():
     mock_structured.ainvoke.return_value = JobPost(
         company="Acme Corp",
         role="Developer",
-        requirements_summary="Need experience",
-        key_requirements=["Python"],
         hr_email="fake@notintext.com",  # This email should NOT be in candidate list
     )
     mock_llm.with_structured_output.return_value = mock_structured

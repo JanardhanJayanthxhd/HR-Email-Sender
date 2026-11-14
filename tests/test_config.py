@@ -14,14 +14,13 @@ def test_default_paths_are_derived_from_project_root(monkeypatch):
     monkeypatch.setenv("SENDER_NAME", "Test User")
     monkeypatch.delenv("RESUME_DIR", raising=False)
     monkeypatch.delenv("DATABASE_PATH", raising=False)
-    monkeypatch.delenv("PROFILE_PATH", raising=False)
 
     settings = Settings(_env_file=None)
     project_root = Path(__file__).resolve().parents[1]
 
     assert settings.resume_dir == project_root / "resume"
     assert settings.database_path == project_root / "data" / "applications.db"
-    assert settings.profile_path == project_root / "resume" / "profile.md"
+    assert "profile_path" not in Settings.model_fields
 
 
 def test_settings_loads_from_env(monkeypatch):

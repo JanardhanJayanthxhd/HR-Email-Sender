@@ -1,5 +1,12 @@
 from pathlib import Path
-from src.bot.keyboards import approval_keyboard, email_choice_keyboard, resume_choice_keyboard
+
+from src.bot.keyboards import (
+    approval_keyboard,
+    email_choice_keyboard,
+    email_template_keyboard,
+    resume_choice_keyboard,
+)
+from src.mailer.email_templates import EMAIL_TEMPLATES
 
 
 def test_approval_keyboard():
@@ -27,3 +34,12 @@ def test_resume_choice_keyboard():
     assert len(keyboard.inline_keyboard) == 2
     assert keyboard.inline_keyboard[0][0].text == "1️⃣ resume1.pdf"
     assert keyboard.inline_keyboard[0][0].callback_data == "resume_0"
+
+
+def test_email_template_keyboard_is_numbered_for_each_template():
+    keyboard = email_template_keyboard()
+
+    assert len(keyboard.inline_keyboard) == len(EMAIL_TEMPLATES)
+    assert [
+        row[0].callback_data for row in keyboard.inline_keyboard
+    ] == [f"template_{number}" for number in range(1, len(EMAIL_TEMPLATES) + 1)]

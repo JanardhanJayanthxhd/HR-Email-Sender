@@ -8,12 +8,13 @@ from src.models import JobPost
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(1), reraise=True)
-async def _invoke_extractor(
-    text: str, candidate_emails: list[str], llm: BaseChatModel
-) -> JobPost:
+async def _invoke_extractor(text: str, candidate_emails: list[str], llm: BaseChatModel) -> JobPost:
     structured_llm = llm.with_structured_output(JobPost, method="json_schema")
     return await structured_llm.ainvoke(
-        EXTRACTION_PROMPT.format(job_text=text, candidate_emails=candidate_emails)
+        EXTRACTION_PROMPT.format(
+            job_text=text,
+            candidate_emails=candidate_emails,
+        )
     )
 
 
