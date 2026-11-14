@@ -3,6 +3,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 from src.extraction.email_finder import find_emails
 from src.llm.prompts import EXTRACTION_PROMPT
+from src.logger import log
 from src.models import JobPost
 
 
@@ -24,17 +25,16 @@ async def extract_job_post(text: str, llm: BaseChatModel) -> JobPost | None:
     candidate_emails = find_emails(text)
 
     if not candidate_emails:
+        print(f"Candidate email found using regex: {candidate_emails}")
         return None
 
     # Step 2: LLM extracts structured data and selects HR email
     structured_llm = llm.with_structured_output(JobPost, method="json_schema")
 
     result: JobPost = await structured_llm.ainvoke(
-        EXTRACTION_PROMPT.format(
-            job_text=text,
-            candidate_emails=candidate_emails
-        )
+        EXTRACTION_PROMPT.format(job_text=text, candidate_emails=candidate_emails)
     )
+    log.info(f"Result from LLM after extraction: {result}")
 
     # Step 3: Validate HR email is from candidates (Review Focus #1)
     if result.hr_email not in candidate_emails:

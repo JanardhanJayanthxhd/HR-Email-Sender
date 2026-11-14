@@ -21,13 +21,13 @@ def find_emails(text: str) -> list[str]:
     """
     # De-obfuscate common patterns
     normalized = text.lower()
-    normalized = re.sub(r'\[at\]|\(at\)| at ', '@', normalized)
-    normalized = re.sub(r'\[dot\]|\(dot\)| dot ', '.', normalized)
-    normalized = re.sub(r'\s+@\s+', '@', normalized)
-    normalized = re.sub(r'\s+\.\s+', '.', normalized)
+    normalized = re.sub(r"\[at\]|\(at\)| at ", "@", normalized)
+    normalized = re.sub(r"\[dot\]|\(dot\)| dot ", ".", normalized)
+    normalized = re.sub(r"\s+@\s+", "@", normalized)
+    normalized = re.sub(r"\s+\.\s+", ".", normalized)
 
     # Find standard email pattern
-    email_pattern = r'\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b'
+    email_pattern = r"\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b"
     emails = re.findall(email_pattern, normalized)
 
     # Deduplicate while preserving order

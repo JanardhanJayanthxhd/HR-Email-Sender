@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from src.llm.extractor import extract_job_post
 from src.models import JobPost
 
@@ -15,7 +17,7 @@ async def test_extract_job_post_success():
         role="Python Developer",
         requirements_summary="Need FastAPI and Docker experience",
         key_requirements=["FastAPI", "Docker"],
-        hr_email="hr@acme.com"
+        hr_email="hr@acme.com",
     )
     mock_llm.with_structured_output.return_value = mock_structured
 
@@ -39,7 +41,7 @@ async def test_extract_rejects_email_not_in_candidates():
         role="Developer",
         requirements_summary="Need experience",
         key_requirements=["Python"],
-        hr_email="fake@notintext.com"  # This email should NOT be in candidate list
+        hr_email="fake@notintext.com",  # This email should NOT be in candidate list
     )
     mock_llm.with_structured_output.return_value = mock_structured
 

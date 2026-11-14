@@ -1,34 +1,36 @@
 import asyncio
-import structlog
 
-from src.config import Settings
 from src.bot.handlers import (
-    start_command,
+    handle_edit_callback,
+    handle_email_choice,
+    handle_message,
+    handle_resume_choice,
+    handle_send_callback,
+    handle_skip_callback,
     help_command,
     resume_command,
-    handle_message,
-    handle_send_callback,
-    handle_edit_callback,
-    handle_skip_callback,
-    handle_email_choice,
-    handle_resume_choice,
+    start_command,
 )
-
+from src.config import Settings
+from src.logger import log
 from src.storage.db import init_db
 
 
-logger = structlog.get_logger()
-
-
-async def main():
+def main() -> None:
     settings = Settings()
 
     # Initialize database
-    await init_db(settings.database_path)
-    logger.info("Database initialized", path=str(settings.database_path))
+    asyncio.run(init_db(settings.database_path))
+    log.info(f"Database initialized, path={str(settings.database_path)}")
 
     # Build application
-    from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+    from telegram.ext import (
+        Application,
+        CallbackQueryHandler,
+        CommandHandler,
+        MessageHandler,
+        filters,
+    )
 
     app = Application.builder().token(settings.telegram_bot_token).build()
 
@@ -47,14 +49,14 @@ async def main():
     app.add_handler(CallbackQueryHandler(handle_email_choice, pattern="^email_"))
     app.add_handler(CallbackQueryHandler(handle_resume_choice, pattern="^resume_"))
 
-    logger.info("Bot starting", provider=settings.llm_provider, model=settings.llm_model)
+    log.info("Bot starting", provider=settings.llm_provider, model=settings.llm_model)
 
     # Run bot
-    await app.run_polling(drop_pending_updates=True)
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
+        log.info("Bot stopped by user")
