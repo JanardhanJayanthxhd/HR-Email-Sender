@@ -3,6 +3,8 @@ from pathlib import Path
 
 import aiosqlite
 
+from src.logger import log
+
 
 async def init_db(db_path: Path) -> None:
     """Initialize database schema
@@ -10,22 +12,26 @@ async def init_db(db_path: Path) -> None:
     Args:
         db_path: Path to SQLite database file.
     """
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    async with aiosqlite.connect(db_path) as db:
-        await db.execute("""CREATE TABLE IF NOT EXISTS applications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company TEXT NOT NULL,
-            role TEXT NOT NULL,
-            hr_email TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            body TEXT NOT NULL,
-            status TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )""")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON applications(timestamp)")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_status ON applications(status)")
-        await db.commit()
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute("""CREATE TABLE IF NOT EXISTS applications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company TEXT NOT NULL,
+                role TEXT NOT NULL,
+                hr_email TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                body TEXT NOT NULL,
+                status TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )""")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON applications(timestamp)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_status ON applications(status)")
+            await db.commit()
+    except Exception:
+        log.exception("Failed to initialize application database", database_path=str(db_path))
+        raise
 
 
 async def insert_application(
@@ -42,12 +48,17 @@ async def insert_application(
         body: Email body.
         status: Application status ('sent' or 'skipped').
     """
-    async with aiosqlite.connect(db_path) as db:
-        await db.execute(
-            "INSERT INTO applications (company, role, hr_email, subject, body, status) VALUES (?, ?, ?, ?, ?, ?)",
-            (company, role, hr_email, subject, body, status),
-        )
-        await db.commit()
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "INSERT INTO applications (company, role, hr_email, subject, body, status) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (company, role, hr_email, subject, body, status),
+            )
+            await db.commit()
+    except Exception:
+        log.exception("Failed to save application record", database_path=str(db_path))
+        raise
 
 
 async def get_daily_send_count(db_path: Path) -> int:
@@ -61,9 +72,14 @@ async def get_daily_send_count(db_path: Path) -> int:
     """
     cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
 
-    async with aiosqlite.connect(db_path) as db:
-        cursor = await db.execute(
-            "SELECT COUNT(*) FROM applications WHERE status='sent' AND timestamp > ?", (cutoff,)
-        )
-        result = await cursor.fetchone()
-        return result[0] if result else 0
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM applications WHERE status='sent' AND timestamp > ?",
+                (cutoff,),
+            )
+            result = await cursor.fetchone()
+            return result[0] if result else 0
+    except Exception:
+        log.exception("Failed to read daily application count", database_path=str(db_path))
+        raise

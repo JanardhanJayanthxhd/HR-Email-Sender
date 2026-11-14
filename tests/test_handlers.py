@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.bot.handlers import start_command, handle_send_callback
+
+import pytest
+
+from src.bot.handlers import handle_send_callback, start_command
 
 
 @pytest.mark.asyncio
@@ -17,9 +19,12 @@ async def test_start_command_single_resume(tmp_path, monkeypatch):
     resume_dir.mkdir()
     (resume_dir / "resume.pdf").write_bytes(b"fake")
 
-    with patch("src.bot.handlers.settings.resume_dir", resume_dir):
+    with patch("src.bot.handlers.settings.resume_dir", resume_dir), \
+         patch("src.bot.handlers.settings.allowed_user_id", 123):
         mock_update = MagicMock()
+        mock_update.effective_user.id = 123
         mock_update.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.message
         mock_context = MagicMock()
 
         await start_command(mock_update, mock_context)
@@ -42,13 +47,18 @@ async def test_handle_send_callback_enforces_daily_cap(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
 
     with patch("src.bot.handlers.settings.database_path", db_path), \
+         patch("src.bot.handlers.settings.allowed_user_id", 123), \
+         patch("src.bot.handlers.settings.daily_send_cap", 2), \
          patch("src.bot.handlers.get_daily_send_count", return_value=2):  # At cap
 
         mock_update = MagicMock()
+        mock_update.effective_user.id = 123
         mock_update.callback_query.answer = AsyncMock()
         mock_update.callback_query.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.callback_query.message
+        mock_update.callback_query.data = "send_draft_id"
         mock_context = MagicMock()
-        mock_context.user_data = {"draft_id": {}}
+        mock_context.user_data = {"draft_id": {"subject": "Test"}}
 
         await handle_send_callback(mock_update, mock_context)
 

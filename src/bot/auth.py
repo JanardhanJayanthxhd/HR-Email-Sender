@@ -4,6 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.config import Settings
+from src.logger import log
 
 
 def authorized_only(settings: Settings):
@@ -19,8 +20,12 @@ def authorized_only(settings: Settings):
     def decorator(handler):
         @wraps(handler)
         async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            if update.effective_user.id != settings.allowed_user_id:
-                await update.message.reply_text("⛔ Unauthorized.")
+            user = update.effective_user
+            if user is None or user.id != settings.allowed_user_id:
+                log.warning("Rejected unauthorized Telegram update")
+                message = update.effective_message
+                if message is not None:
+                    await message.reply_text("⛔ Unauthorized.")
                 return None
             return await handler(update, context)
 
