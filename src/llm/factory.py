@@ -4,6 +4,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_ollama import ChatOllama
 
 from src.config import Settings
+from src.logger import log
 
 
 def build_ollama_llm(settings: Settings) -> BaseChatModel:
@@ -17,10 +18,12 @@ def build_ollama_llm(settings: Settings) -> BaseChatModel:
 
 def build_google_llm(settings: Settings) -> BaseChatModel:
     if not settings.google_api_key:
+        log.error("Google LLM selected without a Google API key")
         raise ValueError("GOOGLE_API_KEY required when LLM_PROVIDER=google")
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
     except ImportError as exc:
+        log.exception("Google LLM dependency is not installed")
         raise RuntimeError("Install the 'google' extra to use Google Gemini") from exc
     return ChatGoogleGenerativeAI(
         model=settings.llm_model,
@@ -41,5 +44,6 @@ def get_llm(settings: Settings) -> BaseChatModel:
     try:
         builder = _PROVIDERS[provider]
     except KeyError as exc:
+        log.error("Unsupported LLM provider configured", provider=provider)
         raise ValueError(f"Unknown provider: {provider}") from exc
     return builder(settings)

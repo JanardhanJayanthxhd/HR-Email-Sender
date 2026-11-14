@@ -47,6 +47,7 @@ async def test_extract_rejects_email_not_in_candidates():
 
     with pytest.raises(ValueError, match="not found in original"):
         await extract_job_post(job_text, mock_llm)
+    mock_structured.ainvoke.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -1,16 +1,5 @@
 import asyncio
 
-from src.bot.handlers import (
-    handle_edit_callback,
-    handle_email_choice,
-    handle_message,
-    handle_resume_choice,
-    handle_send_callback,
-    handle_skip_callback,
-    help_command,
-    resume_command,
-    start_command,
-)
 from src.config import Settings
 from src.logger import log
 from src.storage.db import init_db
@@ -18,6 +7,18 @@ from src.storage.db import init_db
 
 def main() -> None:
     settings = Settings()
+
+    from src.bot.handlers import (
+        handle_edit_callback,
+        handle_email_choice,
+        handle_message,
+        handle_resume_choice,
+        handle_send_callback,
+        handle_skip_callback,
+        help_command,
+        resume_command,
+        start_command,
+    )
 
     # Initialize database
     asyncio.run(init_db(settings.database_path))
@@ -60,3 +61,6 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         log.info("Bot stopped by user")
+    except Exception:
+        log.exception("Bot stopped because of an unhandled error")
+        raise

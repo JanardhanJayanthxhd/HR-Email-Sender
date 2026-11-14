@@ -1,6 +1,8 @@
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from src.mailer.gmail import send_email
 
 
@@ -9,7 +11,7 @@ async def test_send_email_success(tmp_path):
     resume_path = tmp_path / "resume.pdf"
     resume_path.write_bytes(b"fake pdf content")
 
-    with patch("src.mailer.gmail.SMTP") as mock_smtp:
+    with patch("src.mailer.gmail.aiosmtplib.SMTP") as mock_smtp:
         mock_instance = AsyncMock()
         mock_smtp.return_value.__aenter__.return_value = mock_instance
 
@@ -21,7 +23,7 @@ async def test_send_email_success(tmp_path):
             sender_email="sender@gmail.com",
             sender_password="password",
             sender_name="Test Sender",
-            reply_to="reply@gmail.com"
+            reply_to="reply@gmail.com",
         )
 
         assert result is True
@@ -42,26 +44,29 @@ async def test_send_email_missing_attachment():
         sender_email="sender@gmail.com",
         sender_password="password",
         sender_name="Test",
-        reply_to="reply@gmail.com"
+        reply_to="reply@gmail.com",
     )
 
     assert result is False
 
 
 @pytest.mark.asyncio
-async def test_send_email_smtp_failure():
-    with patch("src.mailer.gmail.SMTP") as mock_smtp:
+async def test_send_email_smtp_failure(tmp_path):
+    attachment_path = tmp_path / "resume.pdf"
+    attachment_path.write_bytes(b"fake pdf content")
+
+    with patch("src.mailer.gmail.aiosmtplib.SMTP") as mock_smtp:
         mock_smtp.side_effect = Exception("SMTP error")
 
         result = await send_email(
             to="hr@test.com",
             subject="Test",
             body="Body",
-            attachment_path=Path("resume.pdf"),
+            attachment_path=attachment_path,
             sender_email="sender@gmail.com",
             sender_password="password",
             sender_name="Test",
-            reply_to="reply@gmail.com"
+            reply_to="reply@gmail.com",
         )
 
         assert result is False

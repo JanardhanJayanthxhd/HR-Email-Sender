@@ -36,6 +36,7 @@ async def send_email(
     try:
         # Check if attachment exists (Review Focus #4)
         if not attachment_path.exists():
+            log.error("Email not sent because the resume attachment is missing")
             return False
 
         # Build message
@@ -56,12 +57,12 @@ async def send_email(
             msg.attach(attachment)
 
         # Send via Gmail SMTP (SSL port 465)
-        async with aiosmtplib.SMTP(hostname="smtp.gmail.com", port=465, ssl=True) as smtp:
+        async with aiosmtplib.SMTP(hostname="smtp.gmail.com", port=587, start_tls=True) as smtp:
             await smtp.login(sender_email, sender_password)
             await smtp.send_message(msg)
 
         return True
 
-    except Exception as e:
-        log.error(f"Failed to send email: {e}")
+    except Exception:
+        log.exception("Failed to send email")
         return False

@@ -1,5 +1,6 @@
 import random
 import uuid
+from pathlib import Path
 
 from email_validator import EmailNotValidError, validate_email
 from telegram import Update
@@ -18,12 +19,19 @@ from src.storage.db import get_daily_send_count, init_db, insert_application
 settings = Settings()
 
 
+def _list_resumes() -> list[Path]:
+    try:
+        return list(settings.resume_dir.glob("*.pdf"))
+    except OSError:
+        log.exception("Failed to scan the resume directory")
+        raise
+
+
 @authorized_only(settings)
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command."""
     # Check for resumes
-    resume_dir = settings.resume_dir
-    resume_files = list(resume_dir.glob("*.pdf"))
+    resume_files = _list_resumes()
 
     if not resume_files:
         await update.message.reply_text(
@@ -73,7 +81,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @authorized_only(settings)
 async def resume_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /resume command."""
-    resume_files = list(settings.resume_dir.glob("*.pdf"))
+    resume_files = _list_resumes()
+    log.info("Scanned resume directory", resume_count=len(resume_files))
 
     if not resume_files:
         await update.message.reply_text("⚠️ No resume found.")
@@ -92,6 +101,7 @@ async def resume_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @authorized_only(settings)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle incoming job post text."""
+    log.info(f"User message: {update.message.text}")
     # Check if in edit mode
     if context.user_data.get("waiting_for_edit"):
         draft_id = context.user_data["waiting_for_edit"]
@@ -122,7 +132,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Extract job post
         job_post = await extract_job_post(job_text, llm)
-        log.info(f"Extracted Job post: {job_post}")
+        log.info("Extracted job post details")
 
         if not job_post:
             await update.message.reply_text(
@@ -134,6 +144,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             validate_email(job_post.hr_email)
         except EmailNotValidError:
+            log.warning("Extracted HR email failed format validation")
             await update.message.reply_text(f"❌ Invalid email address format: {job_post.hr_email}")
             return
 
@@ -147,7 +158,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Draft email
         draft = await draft_email(job_post, profile_content, settings.sender_name, llm)
 
-        log.info(f"Drafted email: {draft}")
+        log.info("Drafted application email")
         # Store draft
         draft_id = str(uuid.uuid4())[:8]
         context.user_data[draft_id] = {
@@ -168,9 +179,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=approval_keyboard(draft_id),
         )
 
-    except Exception as e:
+    except Exception:
+        log.exception("Failed to process job post")
         await update.message.reply_text(
-            f"❌ Failed to extract job details: {str(e)}\n\n"
+            "❌ Failed to process the job post.\n\n"
             "Please try rephrasing or check the job post format."
         )
 
@@ -188,8 +200,15 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     # Check daily cap (Review Focus #3)
-    await init_db(settings.database_path)
-    sent_count = await get_daily_send_count(settings.database_path)
+    try:
+        await init_db(settings.database_path)
+        sent_count = await get_daily_send_count(settings.database_path)
+    except Exception:
+        log.exception("Failed to check the daily email send limit")
+        await update.callback_query.message.reply_text(
+            "❌ Could not check the daily send limit. Please try again."
+        )
+        return
 
     if sent_count >= settings.daily_send_cap:
         await update.callback_query.message.reply_text(
@@ -221,15 +240,23 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if success:
         # Log to database
-        await insert_application(
-            db_path=settings.database_path,
-            company=job_post.company,
-            role=job_post.role,
-            hr_email=job_post.hr_email,
-            subject=draft_data["subject"],
-            body=draft_data["body"],
-            status="sent",
-        )
+        try:
+            await insert_application(
+                db_path=settings.database_path,
+                company=job_post.company,
+                role=job_post.role,
+                hr_email=job_post.hr_email,
+                subject=draft_data["subject"],
+                body=draft_data["body"],
+                status="sent",
+            )
+        except Exception:
+            log.exception("Email was sent, but its application record could not be saved")
+            await update.callback_query.message.reply_text(
+                "✅ Email sent, but the application record could not be saved."
+            )
+            del context.user_data[draft_id]
+            return
 
         # Random delay for next send
         delay = random.randint(settings.send_delay_min, settings.send_delay_max)

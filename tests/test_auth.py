@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+
 from src.bot.auth import authorized_only
 from src.config import Settings
 
@@ -45,6 +47,7 @@ async def test_unauthorized_user_blocked(monkeypatch):
     mock_update = MagicMock()
     mock_update.effective_user.id = 99999  # Wrong user ID
     mock_update.message.reply_text = AsyncMock()
+    mock_update.effective_message = mock_update.message
 
     result = await handler(mock_update, None)
 

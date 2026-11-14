@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Ollama-specific
     ollama_base_url: str = "http://localhost:11434"
     ollama_num_ctx: int = 8192
+    google_api_key: str | None = None
 
     # Gmail
     gmail_address: str
@@ -33,5 +34,6 @@ class Settings(BaseSettings):
     # Paths
     resume_dir: Path = Path("resume")
     database_path: Path = Path("data/applications.db")
+    profile_path: Path = Path("../resume/profile.md")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
