@@ -12,6 +12,7 @@ def test_default_paths_are_derived_from_project_root(monkeypatch):
     monkeypatch.setenv("GMAIL_APP_PASSWORD", "test_pass")
     monkeypatch.setenv("REPLY_TO_EMAIL", "reply@gmail.com")
     monkeypatch.setenv("SENDER_NAME", "Test User")
+    monkeypatch.delenv("SENDER_PHONE", raising=False)
     monkeypatch.delenv("RESUME_DIR", raising=False)
     monkeypatch.delenv("DATABASE_PATH", raising=False)
 
@@ -21,6 +22,7 @@ def test_default_paths_are_derived_from_project_root(monkeypatch):
     assert settings.resume_dir == project_root / "resume"
     assert settings.database_path == project_root / "data" / "applications.db"
     assert "profile_path" not in Settings.model_fields
+    assert settings.sender_phone is None
 
 
 def test_settings_loads_from_env(monkeypatch):
@@ -30,6 +32,7 @@ def test_settings_loads_from_env(monkeypatch):
     monkeypatch.delenv("GMAIL_APP_PASSWORD", raising=False)
     monkeypatch.delenv("REPLY_TO_EMAIL", raising=False)
     monkeypatch.delenv("SENDER_NAME", raising=False)
+    monkeypatch.delenv("SENDER_PHONE", raising=False)
 
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test_token")
     monkeypatch.setenv("ALLOWED_USER_ID", "12345")
@@ -37,11 +40,13 @@ def test_settings_loads_from_env(monkeypatch):
     monkeypatch.setenv("GMAIL_APP_PASSWORD", "test_pass")
     monkeypatch.setenv("REPLY_TO_EMAIL", "reply@gmail.com")
     monkeypatch.setenv("SENDER_NAME", "Test User")
+    monkeypatch.setenv("SENDER_PHONE", "+1 555 010 1234")
 
     settings = Settings(_env_file=None)
 
     assert settings.telegram_bot_token == "test_token"
     assert settings.allowed_user_id == 12345
+    assert settings.sender_phone == "+1 555 010 1234"
     assert settings.llm_provider == "ollama"  # default
     assert settings.daily_send_cap == 15  # default
 
@@ -56,6 +61,7 @@ def test_settings_validates_required_fields(monkeypatch):
     monkeypatch.delenv("GMAIL_APP_PASSWORD", raising=False)
     monkeypatch.delenv("REPLY_TO_EMAIL", raising=False)
     monkeypatch.delenv("SENDER_NAME", raising=False)
+    monkeypatch.delenv("SENDER_PHONE", raising=False)
 
     with pytest.raises(ValidationError):
         Settings(_env_file=None)  # Missing required fields

@@ -8,15 +8,13 @@ from telegram.ext import ContextTypes
 
 from src.bot.auth import authorized_only
 from src.bot.keyboards import approval_keyboard, email_template_keyboard, resume_choice_keyboard
-from src.config import Settings
+from src.config import settings
 from src.llm.extractor import extract_job_post
 from src.llm.factory import get_llm
 from src.logger import log
 from src.mailer.email_templates import EMAIL_TEMPLATES, render_email_template
 from src.mailer.gmail import send_email
 from src.storage.db import get_daily_send_count, init_db, insert_application
-
-settings = Settings()
 
 
 def _list_resumes() -> list[Path]:

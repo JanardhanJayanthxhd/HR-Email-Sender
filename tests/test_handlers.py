@@ -75,7 +75,11 @@ async def test_handle_send_callback_enforces_daily_cap(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_handle_template_choice_renders_selected_template(monkeypatch):
-    with patch("src.bot.handlers.settings.allowed_user_id", 123):
+    with (
+        patch("src.bot.handlers.settings.allowed_user_id", 123),
+        patch("src.bot.handlers.settings.sender_name", "Configured Name"),
+        patch("src.bot.handlers.settings.sender_phone", "+1 555 010 1234"),
+    ):
         mock_update = MagicMock()
         mock_update.effective_user.id = 123
         mock_update.callback_query.answer = AsyncMock()
@@ -100,7 +104,7 @@ async def test_handle_template_choice_renders_selected_template(monkeypatch):
         message = mock_update.callback_query.message.reply_text.call_args.args[0]
         assert "2. Straightforward" in message
         assert "Frontend Developer" in message
-        assert "[redacted]" in message
+        assert "Configured Name\n+1 555 010 1234" in message
         assert "pending_application" not in mock_context.user_data
 
 

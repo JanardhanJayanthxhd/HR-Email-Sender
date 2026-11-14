@@ -111,9 +111,10 @@ The bot sends the job post to this local Ollama service for extraction. Keep the
     - `GMAIL_ADDRESS`: Gmail account used as the sender.
     - `GMAIL_APP_PASSWORD`: the generated App Password.
     - `REPLY_TO_EMAIL`: address recipients should reply to.
-    - `SENDER_NAME`: name displayed in the From header.
+    - `SENDER_NAME`: name displayed in the From header and email signature.
+    - `SENDER_PHONE`: optional phone number for the email signature. Leave blank to omit it.
 
-Email is sent through Gmail SMTP using STARTTLS on port 587. The fixed templates include their own names and phone number; `REPLY_TO_EMAIL` is used as the message's Reply-To header.
+Email is sent through Gmail SMTP using STARTTLS on port 587. The templates get the sender name and optional phone number from `.env`; no personal signature details are hardcoded. `REPLY_TO_EMAIL` is used as the message's Reply-To header.
 
 ### 5. Add your resume
 
@@ -135,7 +136,8 @@ The `.env` file uses these settings:
 | `GMAIL_ADDRESS`      | Gmail sender account                                           | Required                        |
 | `GMAIL_APP_PASSWORD` | Google App Password                                            | Required                        |
 | `REPLY_TO_EMAIL`     | Reply-To address                                               | Required                        |
-| `SENDER_NAME`        | Name in the email From header                                  | Required                        |
+| `SENDER_NAME`        | Name in the email From header and signature                    | Required                        |
+| `SENDER_PHONE`       | Optional phone number included in the email signature          | Empty (omitted)                 |
 | `DAILY_SEND_CAP`     | Maximum sends allowed in a 24-hour period                      | `15`                            |
 | `SEND_DELAY_MIN`     | Minimum delay value shown in the post-send message, in seconds | `30`                            |
 | `SEND_DELAY_MAX`     | Maximum delay value shown in the post-send message, in seconds | `60`                            |

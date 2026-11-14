@@ -1,13 +1,11 @@
 import asyncio
 
-from src.config import Settings
+from src.config import settings
 from src.logger import log
 from src.storage.db import init_db
 
 
 def main() -> None:
-    settings = Settings()
-
     from src.bot.handlers import (
         handle_edit_callback,
         handle_email_choice,

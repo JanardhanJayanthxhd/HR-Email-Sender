@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     gmail_app_password: str
     reply_to_email: str
     sender_name: str
+    sender_phone: str | None = None
 
     # Application behavior
     daily_send_cap: int = 15
@@ -38,3 +39,6 @@ class Settings(BaseSettings):
     database_path: Path = PROJECT_ROOT / "data" / "applications.db"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+
+settings = Settings()

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from src.config import settings
 from src.models import EmailDraft
 
 
@@ -24,8 +25,8 @@ I am eager to apply my skills, take on new challenges, and contribute to your te
 
 Thank you for your time. I look forward to hearing from you.
 Best regards,
-[redacted]
-[redacted]""",
+{sender_name}
+{phone_line}""",
     ),
     EmailTemplate(
         name="Straightforward",
@@ -41,8 +42,8 @@ I have attached my resume for your consideration. I would appreciate the opportu
 Thank you for your time and consideration.
 
 Sincerely,
-[redacted]
-[redacted]""",
+{sender_name}
+{phone_line}""",
     ),
 )
 
@@ -53,7 +54,14 @@ def render_email_template(template_number: int, *, company: str, role: str) -> E
         raise ValueError(f"Template number must be between 1 and {len(EMAIL_TEMPLATES)}")
 
     template = EMAIL_TEMPLATES[template_number - 1]
+    phone_line = (settings.sender_phone or "").strip()
+    body = template.body.format(
+        role=role,
+        company=company,
+        sender_name=settings.sender_name,
+        phone_line=phone_line,
+    )
     return EmailDraft(
         subject=template.subject.format(role=role, company=company),
-        body=template.body.format(role=role, company=company),
+        body=body.rstrip(),
     )
