@@ -19,6 +19,9 @@ def test_templates_render_role_and_configured_name_without_optional_phone(monkey
     )
 
     assert len(EMAIL_TEMPLATES) == 2
+    assert detailed.subject == "Application for Python Developer"
+    assert straightforward.subject == "Application for Backend Developer"
+    assert "Acme Ltd" not in detailed.subject + straightforward.subject
     assert "Python Developer position at Acme Ltd" in detailed.body
     assert detailed.body.endswith("Best regards,\nConfigured Name")
     assert "Backend Developer at Acme Ltd" in straightforward.body

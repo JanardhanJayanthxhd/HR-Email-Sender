@@ -8,6 +8,7 @@ from src.bot.handlers import (
     handle_template_choice,
     start_command,
 )
+from src.mailer.email_templates import EMAIL_TEMPLATES
 from src.models import JobPost
 
 
@@ -136,9 +137,12 @@ async def test_handle_message_prompts_for_template_without_profile():
         await handle_message(mock_update, mock_context)
 
         mock_extract.assert_awaited_once_with(job_text, mock_llm)
-        assert "Role selected based on your Python/backend/AI experience: Python Developer" in (
-            mock_update.message.reply_text.call_args_list[-1].args[0]
-        )
+        response = mock_update.message.reply_text.call_args_list[-1].args[0]
+        assert "Extracted job details:" in response
+        assert "company name: Acme" in response
+        assert "hr email: hr@acme.com" in response
+        assert "role: Python Developer" in response
+        assert f"Choose an email template (1-{len(EMAIL_TEMPLATES)}):" in response
         assert mock_context.user_data["pending_application"] == {"job_post": job_post}
         keyboard = mock_update.message.reply_text.call_args_list[-1].kwargs["reply_markup"]
         assert keyboard.inline_keyboard[0][0].callback_data == "template_1"

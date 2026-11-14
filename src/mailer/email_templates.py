@@ -14,7 +14,7 @@ class EmailTemplate:
 EMAIL_TEMPLATES = (
     EmailTemplate(
         name="Slightly detailed",
-        subject="Application for {role} at {company}",
+        subject="Application for {role}",
         body="""Dear Hiring Team,
 
 I came across your post for the {role} position at {company} and would like to apply. I am a Python developer with 1 year of experience in the IT sector, based in Chennai, with a strong interest in Python and Generative AI.
@@ -30,7 +30,7 @@ Best regards,
     ),
     EmailTemplate(
         name="Straightforward",
-        subject="Application for {role} at {company}",
+        subject="Application for {role}",
         body="""Dear Hiring Manager,
 
 I am writing to apply for the {role} at {company}.

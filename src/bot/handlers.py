@@ -149,7 +149,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         context.user_data["pending_application"] = {"job_post": job_post}
         await message.reply_text(
-            f"Role selected based on your Python/backend/AI experience: {job_post.role}\n\n"
+            "📋 Extracted job details:\n"
+            f"company name: {job_post.company}\n"
+            f"hr email: {job_post.hr_email}\n"
+            f"role: {job_post.role}\n\n"
             f"Choose an email template (1-{len(EMAIL_TEMPLATES)}):",
             reply_markup=email_template_keyboard(),
         )
