@@ -1,4 +1,5 @@
 from functools import wraps
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -14,6 +15,7 @@ def authorized_only(settings: Settings):
     Returns:
         Decorator function.
     """
+
     def decorator(handler):
         @wraps(handler)
         async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -21,5 +23,7 @@ def authorized_only(settings: Settings):
                 await update.message.reply_text("⛔ Unauthorized.")
                 return None
             return await handler(update, context)
+
         return wrapper
+
     return decorator

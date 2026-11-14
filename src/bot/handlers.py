@@ -1,19 +1,19 @@
 import random
 import uuid
-from pathlib import Path
+
+from email_validator import EmailNotValidError, validate_email
 from telegram import Update
-from telegram.ext import ContextTypes, filters
-from email_validator import validate_email, EmailNotValidError
+from telegram.ext import ContextTypes
 
-from src.config import Settings
 from src.bot.auth import authorized_only
-from src.bot.keyboards import approval_keyboard, email_choice_keyboard, resume_choice_keyboard
-from src.llm.factory import get_llm
-from src.llm.extractor import extract_job_post
+from src.bot.keyboards import approval_keyboard, resume_choice_keyboard
+from src.config import Settings
 from src.llm.drafter import draft_email
+from src.llm.extractor import extract_job_post
+from src.llm.factory import get_llm
+from src.logger import log
 from src.mailer.gmail import send_email
-from src.storage.db import init_db, insert_application, get_daily_send_count
-
+from src.storage.db import get_daily_send_count, init_db, insert_application
 
 settings = Settings()
 
@@ -41,7 +41,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["resume_files"] = resume_files
         await update.message.reply_text(
             "Found multiple resumes. Which one should I use?",
-            reply_markup=resume_choice_keyboard(resume_files)
+            reply_markup=resume_choice_keyboard(resume_files),
         )
 
 
@@ -85,8 +85,7 @@ async def resume_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         context.user_data["resume_files"] = resume_files
         await update.message.reply_text(
-            "Which resume?",
-            reply_markup=resume_choice_keyboard(resume_files)
+            "Which resume?", reply_markup=resume_choice_keyboard(resume_files)
         )
 
 
@@ -101,10 +100,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_edit"] = None
 
         await update.message.reply_text(
-            f"📧 **Updated Draft**\n\n"
-            f"**Subject:** {draft_data['subject']}\n\n"
-            f"{draft_data['body']}",
-            reply_markup=approval_keyboard(draft_id)
+            f"📧 **Updated Draft**\n\n**Subject:** {draft_data['subject']}\n\n{draft_data['body']}",
+            reply_markup=approval_keyboard(draft_id),
         )
         return
 
@@ -125,6 +122,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Extract job post
         job_post = await extract_job_post(job_text, llm)
+        log.info(f"Extracted Job post: {job_post}")
 
         if not job_post:
             await update.message.reply_text(
@@ -136,9 +134,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             validate_email(job_post.hr_email)
         except EmailNotValidError:
-            await update.message.reply_text(
-                f"❌ Invalid email address format: {job_post.hr_email}"
-            )
+            await update.message.reply_text(f"❌ Invalid email address format: {job_post.hr_email}")
             return
 
         # Load profile
@@ -151,6 +147,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Draft email
         draft = await draft_email(job_post, profile_content, settings.sender_name, llm)
 
+        log.info(f"Drafted email: {draft}")
         # Store draft
         draft_id = str(uuid.uuid4())[:8]
         context.user_data[draft_id] = {
@@ -168,7 +165,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📧 **Draft Email:**\n\n"
             f"**Subject:** {draft.subject}\n\n"
             f"{draft.body}",
-            reply_markup=approval_keyboard(draft_id)
+            reply_markup=approval_keyboard(draft_id),
         )
 
     except Exception as e:
@@ -219,7 +216,7 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         sender_email=settings.gmail_address,
         sender_password=settings.gmail_app_password,
         sender_name=settings.sender_name,
-        reply_to=settings.reply_to_email
+        reply_to=settings.reply_to_email,
     )
 
     if success:
@@ -231,7 +228,7 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             hr_email=job_post.hr_email,
             subject=draft_data["subject"],
             body=draft_data["body"],
-            status="sent"
+            status="sent",
         )
 
         # Random delay for next send
@@ -259,9 +256,7 @@ async def handle_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     draft_id = update.callback_query.data.replace("edit_", "")
     context.user_data["waiting_for_edit"] = draft_id
 
-    await update.callback_query.message.reply_text(
-        "✏️ Send me the new email body:"
-    )
+    await update.callback_query.message.reply_text("✏️ Send me the new email body:")
 
 
 @authorized_only(settings)
@@ -283,7 +278,7 @@ async def handle_skip_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             hr_email=job_post.hr_email,
             subject=draft_data["subject"],
             body=draft_data["body"],
-            status="skipped"
+            status="skipped",
         )
 
         del context.user_data[draft_id]
@@ -315,6 +310,5 @@ async def handle_resume_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     if index < len(resume_files):
         context.user_data["selected_resume"] = resume_files[index]
         await update.callback_query.message.reply_text(
-            f"✅ Selected: {resume_files[index].name}\n\n"
-            "Send me a job post to get started."
+            f"✅ Selected: {resume_files[index].name}\n\nSend me a job post to get started."
         )

@@ -1,8 +1,11 @@
-from pathlib import Path
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
+from pathlib import Path
+
 import aiosmtplib
+
+from src.logger import log
 
 
 async def send_email(
@@ -13,7 +16,7 @@ async def send_email(
     sender_email: str,
     sender_password: str,
     sender_name: str,
-    reply_to: str
+    reply_to: str,
 ) -> bool:
     """Send email via Gmail SMTP with attachment.
 
@@ -48,9 +51,7 @@ async def send_email(
         with open(attachment_path, "rb") as f:
             attachment = MIMEApplication(f.read(), _subtype="pdf")
             attachment.add_header(
-                "Content-Disposition",
-                "attachment",
-                filename=attachment_path.name
+                "Content-Disposition", "attachment", filename=attachment_path.name
             )
             msg.attach(attachment)
 
@@ -62,5 +63,5 @@ async def send_email(
         return True
 
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        log.error(f"Failed to send email: {e}")
         return False
