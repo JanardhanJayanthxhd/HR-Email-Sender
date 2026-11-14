@@ -56,7 +56,7 @@ async def send_email(
             )
             msg.attach(attachment)
 
-        # Send via Gmail SMTP (SSL port 465)
+        # Send via Gmail SMTP with STARTTLS on port 587
         async with aiosmtplib.SMTP(hostname="smtp.gmail.com", port=587, start_tls=True) as smtp:
             await smtp.login(sender_email, sender_password)
             await smtp.send_message(msg)

@@ -27,6 +27,11 @@ async def test_send_email_success(tmp_path):
         )
 
         assert result is True
+        mock_smtp.assert_called_once_with(
+            hostname="smtp.gmail.com",
+            port=587,
+            start_tls=True,
+        )
         mock_instance.login.assert_called_once_with("sender@gmail.com", "password")
         mock_instance.send_message.assert_called_once()
 

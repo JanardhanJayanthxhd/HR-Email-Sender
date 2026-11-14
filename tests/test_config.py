@@ -1,6 +1,27 @@
 # tests/test_config.py
 
+from pathlib import Path
+
 from src.config import Settings
+
+
+def test_default_paths_are_derived_from_project_root(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test_token")
+    monkeypatch.setenv("ALLOWED_USER_ID", "12345")
+    monkeypatch.setenv("GMAIL_ADDRESS", "test@gmail.com")
+    monkeypatch.setenv("GMAIL_APP_PASSWORD", "test_pass")
+    monkeypatch.setenv("REPLY_TO_EMAIL", "reply@gmail.com")
+    monkeypatch.setenv("SENDER_NAME", "Test User")
+    monkeypatch.delenv("RESUME_DIR", raising=False)
+    monkeypatch.delenv("DATABASE_PATH", raising=False)
+    monkeypatch.delenv("PROFILE_PATH", raising=False)
+
+    settings = Settings(_env_file=None)
+    project_root = Path(__file__).resolve().parents[1]
+
+    assert settings.resume_dir == project_root / "resume"
+    assert settings.database_path == project_root / "data" / "applications.db"
+    assert settings.profile_path == project_root / "resume" / "profile.md"
 
 
 def test_settings_loads_from_env(monkeypatch):

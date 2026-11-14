@@ -9,7 +9,7 @@ from telegram.ext import ContextTypes
 from src.bot.auth import authorized_only
 from src.bot.keyboards import approval_keyboard, resume_choice_keyboard
 from src.config import Settings
-from src.llm.drafter import draft_email
+from src.llm.drafter import draft_email, format_email_body
 from src.llm.extractor import extract_job_post
 from src.llm.factory import get_llm
 from src.logger import log
@@ -106,7 +106,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("waiting_for_edit"):
         draft_id = context.user_data["waiting_for_edit"]
         draft_data = context.user_data[draft_id]
-        draft_data["body"] = update.message.text
+        draft_data["body"] = format_email_body(
+            update.message.text, settings.sender_name, settings.reply_to_email
+        )
         context.user_data["waiting_for_edit"] = None
 
         await update.message.reply_text(
@@ -156,7 +158,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             profile_content = "Python developer with 1 year experience."
 
         # Draft email
-        draft = await draft_email(job_post, profile_content, settings.sender_name, llm)
+        draft = await draft_email(
+            job_post, profile_content, settings.sender_name, settings.reply_to_email, llm
+        )
 
         log.info("Drafted application email")
         # Store draft

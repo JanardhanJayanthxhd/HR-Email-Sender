@@ -2,6 +2,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 class Settings(BaseSettings):
     """Application configuration from environment variables."""
@@ -32,8 +34,8 @@ class Settings(BaseSettings):
     send_delay_max: int = 60
 
     # Paths
-    resume_dir: Path = Path("resume")
-    database_path: Path = Path("data/applications.db")
-    profile_path: Path = Path("../resume/profile.md")
+    resume_dir: Path = PROJECT_ROOT / "resume"
+    database_path: Path = PROJECT_ROOT / "data" / "applications.db"
+    profile_path: Path = PROJECT_ROOT / "resume" / "profile.md"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
