@@ -53,7 +53,7 @@ def main() -> None:
     log.info("Bot starting", provider=settings.llm_provider, model=settings.llm_model)
 
     # Run bot
-    app.run_polling(drop_pending_updates=True)
+    app.run_polling(drop_pending_updates=False)
 
 
 if __name__ == "__main__":
