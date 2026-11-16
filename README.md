@@ -4,7 +4,7 @@ A Telegram bot that reads a job post, identifies a matching role and application
 
 ## What it does
 
-- Extracts the company, one relevant role, and an application email from a pasted job post.
+- Extracts the company and one relevant role from a pasted job post. Email addresses are found directly from the text; all detected addresses are included in the message's To field.
 - Lets you choose between a slightly detailed or straightforward email template.
 - Lets you review, edit, send, or skip the email.
 - Attaches a PDF resume and records sent or skipped applications in SQLite.

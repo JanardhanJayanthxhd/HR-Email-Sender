@@ -9,7 +9,7 @@ from src.logger import log
 
 
 async def send_email(
-    to: str,
+    to: list[str],
     subject: str,
     body: str,
     attachment_path: Path,
@@ -21,7 +21,7 @@ async def send_email(
     """Send email via Gmail SMTP with attachment.
 
     Args:
-        to: Recipient email address.
+        to: Recipient email addresses.
         subject: Email subject line.
         body: Email body content.
         attachment_path: Path to PDF resume file.
@@ -42,7 +42,7 @@ async def send_email(
         # Build message
         msg = MIMEMultipart()
         msg["From"] = f"{sender_name} <{sender_email}>"
-        msg["To"] = to
+        msg["To"] = ", ".join(to)
         msg["Subject"] = subject
         msg["Reply-To"] = reply_to
 
@@ -59,7 +59,7 @@ async def send_email(
         # Send via Gmail SMTP with STARTTLS on port 587
         async with aiosmtplib.SMTP(hostname="smtp.gmail.com", port=587, start_tls=True) as smtp:
             await smtp.login(sender_email, sender_password)
-            await smtp.send_message(msg)
+            await smtp.send_message(msg, recipients=to)
 
         return True
 

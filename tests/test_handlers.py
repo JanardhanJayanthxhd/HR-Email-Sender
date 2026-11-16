@@ -93,7 +93,7 @@ async def test_handle_template_choice_renders_selected_template(monkeypatch):
                 "job_post": JobPost(
                     company="Acme",
                     role="Frontend Developer",
-                    hr_email="hr@acme.com",
+                    hr_emails=["hr@acme.com"],
                 ),
             }
         }
@@ -115,7 +115,7 @@ async def test_handle_message_prompts_for_template_without_profile():
     job_post = JobPost(
         company="Acme",
         role="Python Developer",
-        hr_email="hr@acme.com",
+        hr_emails=["hr@acme.com"],
     )
     mock_llm = object()
 
@@ -140,7 +140,7 @@ async def test_handle_message_prompts_for_template_without_profile():
         response = mock_update.message.reply_text.call_args_list[-1].args[0]
         assert "Extracted job details:" in response
         assert "company name: Acme" in response
-        assert "hr email: hr@acme.com" in response
+        assert "hr email(s): hr@acme.com" in response
         assert "role: Python Developer" in response
         assert f"Choose an email template (1-{len(EMAIL_TEMPLATES)}):" in response
         assert mock_context.user_data["pending_application"] == {"job_post": job_post}

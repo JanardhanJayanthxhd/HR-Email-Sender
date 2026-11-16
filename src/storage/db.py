@@ -43,7 +43,7 @@ async def insert_application(
         db_path: Path to SQLite database file.
         company: Company name.
         role: Job role.
-        hr_email: HR email address.
+        hr_email: Comma-separated recipient email addresses.
         subject: Email subject.
         body: Email body.
         status: Application status ('sent' or 'skipped').

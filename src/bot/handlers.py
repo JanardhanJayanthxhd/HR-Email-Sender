@@ -122,7 +122,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Check for multiple job posts
-    if job_text.count("@") > 3 or len(job_text) > 3000:
+    if len(job_text) > 3000:
         await message.reply_text(
             "⚠️ Found multiple job posts. Please send them one at a time."
         )
@@ -141,9 +141,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         try:
-            validate_email(job_post.hr_email)
+            for hr_email in job_post.hr_emails:
+                validate_email(hr_email)
         except EmailNotValidError:
-            log.warning("Extracted HR email failed format validation")
+            log.warning("An extracted HR email failed format validation")
             await message.reply_text("❌ Invalid email address format in the job post.")
             return
 
@@ -151,7 +152,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text(
             "📋 Extracted job details:\n"
             f"company name: {job_post.company}\n"
-            f"hr email: {job_post.hr_email}\n"
+            f"hr email(s): {', '.join(job_post.hr_emails)}\n"
             f"role: {job_post.role}\n\n"
             f"Choose an email template (1-{len(EMAIL_TEMPLATES)}):",
             reply_markup=email_template_keyboard(),
@@ -205,7 +206,7 @@ async def handle_template_choice(update: Update, context: ContextTypes.DEFAULT_T
         f"📋 **Job Details:**\n"
         f"Company: {job_post.company}\n"
         f"Role: {job_post.role}\n"
-        f"HR: {job_post.hr_email}\n\n"
+        f"HR: {', '.join(job_post.hr_emails)}\n\n"
         f"📧 **Draft Email ({template_number}. "
         f"{EMAIL_TEMPLATES[template_number - 1].name}):**\n\n"
         f"**Subject:** {draft.subject}\n\n"
@@ -255,7 +256,7 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     # Send email
     job_post = draft_data["job_post"]
     success = await send_email(
-        to=job_post.hr_email,
+        to=job_post.hr_emails,
         subject=draft_data["subject"],
         body=draft_data["body"],
         attachment_path=resume_path,
@@ -272,7 +273,7 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
                 db_path=settings.database_path,
                 company=job_post.company,
                 role=job_post.role,
-                hr_email=job_post.hr_email,
+                hr_email=", ".join(job_post.hr_emails),
                 subject=draft_data["subject"],
                 body=draft_data["body"],
                 status="sent",
@@ -289,7 +290,7 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         delay = random.randint(settings.send_delay_min, settings.send_delay_max)
 
         await update.callback_query.message.reply_text(
-            f"✅ Email sent to {job_post.hr_email}!\n\n"
+            f"✅ Email sent to {', '.join(job_post.hr_emails)}!\n\n"
             f"Sent today: {sent_count + 1}/{settings.daily_send_cap}\n"
             f"(Waiting {delay}s before next send)"
         )
@@ -329,7 +330,7 @@ async def handle_skip_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             db_path=settings.database_path,
             company=job_post.company,
             role=job_post.role,
-            hr_email=job_post.hr_email,
+            hr_email=", ".join(job_post.hr_emails),
             subject=draft_data["subject"],
             body=draft_data["body"],
             status="skipped",

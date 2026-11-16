@@ -1,5 +1,7 @@
 import re
 
+from src.logger import log
+
 
 def find_emails(text: str) -> list[str]:
     """Extract and de-obfuscate email addresses from text.
@@ -38,4 +40,5 @@ def find_emails(text: str) -> list[str]:
             seen.add(email)
             result.append(email)
 
+    log.info(f"Extracted email by find_emails(): {result}")
     return result
