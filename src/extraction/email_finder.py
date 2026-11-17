@@ -10,10 +10,9 @@ def find_emails(text: str) -> list[str]:
     - Standard: user@example.com
     - [at]: user[at]example.com
     - (at): user(at)example.com
-    - " at ": user at example dot com
+    - Spaces around symbols: user @ example . com
     - [dot]: user@example[dot]com
     - (dot): user@example(dot)com
-    - Spaces: user @ example . com
 
     Args:
         text: Input text containing email addresses.
@@ -23,7 +22,7 @@ def find_emails(text: str) -> list[str]:
     """
     # De-obfuscate common patterns
     normalized = text.lower()
-    normalized = re.sub(r"\[at\]|\(at\)| at ", "@", normalized)
+    normalized = re.sub(r"\[at\]|\(at\)", "@", normalized)
     normalized = re.sub(r"\[dot\]|\(dot\)| dot ", ".", normalized)
     normalized = re.sub(r"\s+@\s+", "@", normalized)
     normalized = re.sub(r"\s+\.\s+", ".", normalized)

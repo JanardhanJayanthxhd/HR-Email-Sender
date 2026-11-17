@@ -21,9 +21,15 @@ def test_find_email_with_at_parens():
 
 
 def test_find_email_with_at_spaces():
-    text = "Contact hr at company dot com"
+    text = "Contact hr @ company . com"
     result = find_emails(text)
     assert result == ["hr@company.com"]
+
+
+def test_plain_language_at_does_not_corrupt_email():
+    text = "We're Hiring Freshers at Plutas.ai! Share your profile at bipasha.chhabra@plutas.ai"
+    result = find_emails(text)
+    assert result == ["bipasha.chhabra@plutas.ai"]
 
 
 def test_find_email_with_dot_brackets():
