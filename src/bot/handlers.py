@@ -14,7 +14,12 @@ from src.llm.factory import get_llm
 from src.logger import log
 from src.mailer.email_templates import EMAIL_TEMPLATES, render_email_template
 from src.mailer.gmail import send_email
-from src.storage.db import get_daily_send_count, init_db, insert_application
+from src.storage.db import (
+    get_applications_by_hr_email,
+    get_daily_send_count,
+    init_db,
+    insert_application,
+)
 
 
 def _list_resumes() -> list[Path]:
@@ -148,12 +153,45 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await message.reply_text("❌ Invalid email address format in the job post.")
             return
 
+        previous_applications = {}
+        history_error = False
+        try:
+            await init_db(settings.database_path)
+            for hr_email in job_post.hr_emails:
+                previous_applications[hr_email] = await get_applications_by_hr_email(
+                    settings.database_path, hr_email
+                )
+        except Exception:
+            log.exception("Failed to look up previous applications for extracted HR emails")
+            history_error = True
+
+        if history_error:
+            history_text = "\n\n⚠️ Could not check previous applications; continuing as usual."
+        else:
+            history_sections = []
+            for hr_email, applications in previous_applications.items():
+                if applications:
+                    application_lines = "\n".join(
+                        f"• {role} at {company} — {timestamp} UTC"
+                        for company, role, timestamp in applications
+                    )
+                    history_sections.append(f"{hr_email}:\n{application_lines}")
+
+            if history_sections:
+                history_text = (
+                    "\n\nPreviously sent applications to these HR emails:\n"
+                    + "\n\n".join(history_sections)
+                )
+            else:
+                history_text = "\n\nNo previous sent applications found for these HR emails."
+
         context.user_data["pending_application"] = {"job_post": job_post}
         await message.reply_text(
             "📋 Extracted job details:\n"
             f"company name: {job_post.company}\n"
             f"hr email(s): {', '.join(job_post.hr_emails)}\n"
             f"role: {job_post.role}\n\n"
+            f"{history_text}\n\n"
             f"Choose an email template (1-{len(EMAIL_TEMPLATES)}):",
             reply_markup=email_template_keyboard(),
         )

@@ -8,6 +8,7 @@ A Telegram bot that reads a job post, identifies a matching role and application
 - Lets you choose between a slightly detailed or straightforward email template.
 - Lets you review, edit, send, or skip the email.
 - Attaches a PDF resume and records sent or skipped applications in SQLite.
+- Shows prior sent applications for extracted HR email addresses, including role and timestamp.
 - Restricts bot access to the configured Telegram user ID.
 
 The email templates are fixed in `src/mailer/email_templates.py`.
@@ -168,4 +169,4 @@ Use `/help` for the bot's command summary and `/resume` to change the selected r
 - **Slow first extraction:** Ollama may need to load the model into memory. Check available system memory and whether Ollama is using CPU or GPU.
 - **Gmail authentication failure:** confirm 2-Step Verification is enabled and `GMAIL_APP_PASSWORD` is an App Password for `GMAIL_ADDRESS`.
 - **No resume found:** add a PDF file to `resume/`.
-- **Database:** application history is stored at `data/applications.db`, created automatically.
+- **Database:** application history is stored at `data/applications.db`, created automatically. When an HR email is extracted, prior sent applications to that address are shown with their role and timestamp.

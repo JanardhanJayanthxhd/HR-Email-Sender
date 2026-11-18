@@ -121,6 +121,12 @@ async def test_handle_message_prompts_for_template_without_profile():
 
     with patch("src.bot.handlers.settings.allowed_user_id", 123), \
          patch("src.bot.handlers.get_llm", return_value=mock_llm), \
+         patch("src.bot.handlers.init_db", new_callable=AsyncMock), \
+         patch(
+             "src.bot.handlers.get_applications_by_hr_email",
+             new_callable=AsyncMock,
+             return_value=[("Acme", "Backend Developer", "2026-11-17 10:30:00")],
+         ), \
          patch(
              "src.bot.handlers.extract_job_post",
              new_callable=AsyncMock,
@@ -142,7 +148,49 @@ async def test_handle_message_prompts_for_template_without_profile():
         assert "company name: Acme" in response
         assert "hr email(s): hr@acme.com" in response
         assert "role: Python Developer" in response
+        assert "Previously sent applications to these HR emails:" in response
+        assert "Backend Developer at Acme — 2026-11-17 10:30:00 UTC" in response
         assert f"Choose an email template (1-{len(EMAIL_TEMPLATES)}):" in response
         assert mock_context.user_data["pending_application"] == {"job_post": job_post}
         keyboard = mock_update.message.reply_text.call_args_list[-1].kwargs["reply_markup"]
         assert keyboard.inline_keyboard[0][0].callback_data == "template_1"
+
+
+@pytest.mark.asyncio
+async def test_handle_message_continues_when_application_history_lookup_fails():
+    job_text = "Acme is hiring a developer. Contact: hr@acme.com."
+    job_post = JobPost(
+        company="Acme",
+        role="Python Developer",
+        hr_emails=["hr@acme.com"],
+    )
+
+    with (
+        patch("src.bot.handlers.settings.allowed_user_id", 123),
+        patch("src.bot.handlers.get_llm", return_value=object()),
+        patch("src.bot.handlers.init_db", new_callable=AsyncMock),
+        patch(
+            "src.bot.handlers.get_applications_by_hr_email",
+            new_callable=AsyncMock,
+            side_effect=OSError("database unavailable"),
+        ),
+        patch(
+            "src.bot.handlers.extract_job_post",
+            new_callable=AsyncMock,
+            return_value=job_post,
+        ),
+    ):
+        mock_update = MagicMock()
+        mock_update.effective_user.id = 123
+        mock_update.message.text = job_text
+        mock_update.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.message
+        mock_context = MagicMock()
+        mock_context.user_data = {}
+
+        await handle_message(mock_update, mock_context)
+
+        response = mock_update.message.reply_text.call_args_list[-1].args[0]
+        assert "Could not check previous applications" in response
+        assert "Choose an email template" in response
+        assert mock_context.user_data["pending_application"] == {"job_post": job_post}

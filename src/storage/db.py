@@ -83,3 +83,24 @@ async def get_daily_send_count(db_path: Path) -> int:
     except Exception:
         log.exception("Failed to read daily application count", database_path=str(db_path))
         raise
+
+
+async def get_applications_by_hr_email(db_path: Path, hr_email: str) -> list[tuple[str, str, str]]:
+    """Return sent applications for an HR email as (company, role, timestamp)."""
+    try:
+        async with aiosqlite.connect(db_path) as db:
+            cursor = await db.execute(
+                "SELECT company, role, timestamp FROM applications "
+                "WHERE status='sent' "
+                "AND instr(',' || replace(lower(hr_email), ' ', '') || ',', "
+                "',' || lower(?) || ',') > 0 "
+                "ORDER BY timestamp DESC",
+                (hr_email.strip(),),
+            )
+            return [(row[0], row[1], row[2]) for row in await cursor.fetchall()]
+    except Exception:
+        log.exception(
+            "Failed to read application history for HR email",
+            database_path=str(db_path),
+        )
+        raise
