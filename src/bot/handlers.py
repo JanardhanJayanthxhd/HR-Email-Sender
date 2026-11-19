@@ -30,6 +30,23 @@ def _list_resumes() -> list[Path]:
         raise
 
 
+def _get_selected_resume(context: ContextTypes.DEFAULT_TYPE) -> Path | None:
+    selected_resume = context.user_data.get("selected_resume")
+    if isinstance(selected_resume, Path) and selected_resume.is_file():
+        return selected_resume
+    if isinstance(selected_resume, str):
+        selected_path = Path(selected_resume)
+        if selected_path.is_file():
+            return selected_path
+
+    resume_files = _list_resumes()
+    if len(resume_files) == 1:
+        context.user_data["selected_resume"] = resume_files[0]
+        return resume_files[0]
+
+    return None
+
+
 @authorized_only(settings)
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command."""
@@ -284,9 +301,11 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     # Get resume
-    resume_path = context.user_data.get("selected_resume")
-    if not resume_path or not resume_path.exists():
-        await update.callback_query.message.reply_text("❌ Resume not found.")
+    resume_path = _get_selected_resume(context)
+    if resume_path is None:
+        await update.callback_query.message.reply_text(
+            "❌ Resume not found. Please use /resume to select a PDF."
+        )
         return
 
     await update.callback_query.message.reply_text("📤 Sending email...")

@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.bot.handlers import (
+    _get_selected_resume,
     handle_message,
     handle_send_callback,
     handle_template_choice,
@@ -10,6 +11,20 @@ from src.bot.handlers import (
 )
 from src.mailer.email_templates import EMAIL_TEMPLATES
 from src.models import JobPost
+
+
+def test_get_selected_resume_recovers_single_resume(tmp_path, monkeypatch):
+    resume_dir = tmp_path / "resume"
+    resume_dir.mkdir()
+    resume_path = resume_dir / "resume.pdf"
+    resume_path.write_bytes(b"fake")
+    monkeypatch.setattr("src.bot.handlers.settings.resume_dir", resume_dir)
+
+    context = MagicMock()
+    context.user_data = {}
+
+    assert _get_selected_resume(context) == resume_path
+    assert context.user_data["selected_resume"] == resume_path
 
 
 @pytest.mark.asyncio
