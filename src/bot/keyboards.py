@@ -18,6 +18,19 @@ def approval_keyboard(draft_id: str) -> InlineKeyboardMarkup:
     )
 
 
+def edit_choice_keyboard(draft_id: str) -> InlineKeyboardMarkup:
+    """Build keyboard for choosing which draft field to edit."""
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("📝 Edit Subject", callback_data=f"edit_subject_{draft_id}"),
+                InlineKeyboardButton("✏️ Edit Body", callback_data=f"edit_body_{draft_id}"),
+            ],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f"edit_back_{draft_id}")],
+        ]
+    )
+
+
 def email_choice_keyboard(emails: list[str]) -> InlineKeyboardMarkup:
     """Build numbered email selection keyboard."""
     buttons = [

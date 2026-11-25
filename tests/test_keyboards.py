@@ -2,6 +2,7 @@ from pathlib import Path
 
 from src.bot.keyboards import (
     approval_keyboard,
+    edit_choice_keyboard,
     email_choice_keyboard,
     email_template_keyboard,
     resume_choice_keyboard,
@@ -43,3 +44,15 @@ def test_email_template_keyboard_is_numbered_for_each_template():
     assert [
         row[0].callback_data for row in keyboard.inline_keyboard
     ] == [f"template_{number}" for number in range(1, len(EMAIL_TEMPLATES) + 1)]
+
+
+def test_edit_choice_keyboard():
+    keyboard = edit_choice_keyboard("draft123")
+
+    assert len(keyboard.inline_keyboard) == 2
+    assert keyboard.inline_keyboard[0][0].text == "📝 Edit Subject"
+    assert keyboard.inline_keyboard[0][0].callback_data == "edit_subject_draft123"
+    assert keyboard.inline_keyboard[0][1].text == "✏️ Edit Body"
+    assert keyboard.inline_keyboard[0][1].callback_data == "edit_body_draft123"
+    assert keyboard.inline_keyboard[1][0].text == "⬅️ Back"
+    assert keyboard.inline_keyboard[1][0].callback_data == "edit_back_draft123"

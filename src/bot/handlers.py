@@ -7,7 +7,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.bot.auth import authorized_only
-from src.bot.keyboards import approval_keyboard, email_template_keyboard, resume_choice_keyboard
+from src.bot.keyboards import (
+    approval_keyboard,
+    edit_choice_keyboard,
+    email_template_keyboard,
+    resume_choice_keyboard,
+)
 from src.config import settings
 from src.llm.extractor import extract_job_post
 from src.llm.factory import get_llm
@@ -131,11 +136,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     job_text = message.text
     log.info("Received job post text", character_count=len(job_text))
     # Check if in edit mode
-    if context.user_data.get("waiting_for_edit"):
-        draft_id = context.user_data["waiting_for_edit"]
-        draft_data = context.user_data[draft_id]
-        draft_data["body"] = job_text
+    waiting_for_edit = context.user_data.get("waiting_for_edit")
+    if waiting_for_edit:
+        if isinstance(waiting_for_edit, str):
+            draft_id = waiting_for_edit
+            field = "body"
+        else:
+            draft_id = waiting_for_edit.get("draft_id")
+            field = waiting_for_edit.get("field", "body")
+
+        draft_data = context.user_data.get(draft_id) if draft_id else None
         context.user_data["waiting_for_edit"] = None
+
+        if not draft_data:
+            await message.reply_text("❌ Draft expired. Please send the job post again.")
+            return
+
+        if field == "subject":
+            draft_data["subject"] = job_text.strip()
+        else:
+            draft_data["body"] = job_text
 
         await message.reply_text(
             f"📧 **Updated Draft**\n\n**Subject:** {draft_data['subject']}\n\n{draft_data['body']}",
@@ -362,13 +382,62 @@ async def handle_send_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 @authorized_only(settings)
 async def handle_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle Edit button callback."""
-    await update.callback_query.answer()
+    """Handle Edit button and edit-field callbacks."""
+    query = update.callback_query
+    await query.answer()
 
-    draft_id = update.callback_query.data.replace("edit_", "")
-    context.user_data["waiting_for_edit"] = draft_id
+    data = query.data
 
-    await update.callback_query.message.reply_text("✏️ Send me the new email body:")
+    if data.startswith("edit_subject_"):
+        draft_id = data.removeprefix("edit_subject_")
+        draft_data = context.user_data.get(draft_id)
+        if not draft_data:
+            await query.message.reply_text("❌ Draft expired.")
+            return
+        context.user_data["waiting_for_edit"] = {"draft_id": draft_id, "field": "subject"}
+        await query.message.reply_text("📝 Send me the new subject:")
+        return
+
+    if data.startswith("edit_body_"):
+        draft_id = data.removeprefix("edit_body_")
+        draft_data = context.user_data.get(draft_id)
+        if not draft_data:
+            await query.message.reply_text("❌ Draft expired.")
+            return
+        context.user_data["waiting_for_edit"] = {"draft_id": draft_id, "field": "body"}
+        await query.message.reply_text("✏️ Send me the new email body:")
+        return
+
+    if data.startswith("edit_back_"):
+        draft_id = data.removeprefix("edit_back_")
+        draft_data = context.user_data.get(draft_id)
+        if not draft_data:
+            await query.message.reply_text("❌ Draft expired.")
+            return
+        job_post = draft_data["job_post"]
+        await query.message.reply_text(
+            f"📋 **Job Details:**\n"
+            f"Company: {job_post.company}\n"
+            f"Role: {job_post.role}\n"
+            f"HR: {', '.join(job_post.hr_emails)}\n\n"
+            f"📧 **Draft Email:**\n\n"
+            f"**Subject:** {draft_data['subject']}\n\n"
+            f"{draft_data['body']}",
+            reply_markup=approval_keyboard(draft_id),
+        )
+        return
+
+    draft_id = data.removeprefix("edit_")
+    draft_data = context.user_data.get(draft_id)
+    if not draft_data:
+        await query.message.reply_text("❌ Draft expired.")
+        return
+
+    context.user_data.pop("waiting_for_edit", None)
+    await query.message.reply_text(
+        "What would you like to edit?",
+        reply_markup=edit_choice_keyboard(draft_id),
+    )
 
 
 @authorized_only(settings)

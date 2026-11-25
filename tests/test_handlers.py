@@ -4,6 +4,7 @@ import pytest
 
 from src.bot.handlers import (
     _get_selected_resume,
+    handle_edit_callback,
     handle_message,
     handle_send_callback,
     handle_template_choice,
@@ -209,3 +210,113 @@ async def test_handle_message_continues_when_application_history_lookup_fails():
         assert "Could not check previous applications" in response
         assert "Choose an email template" in response
         assert mock_context.user_data["pending_application"] == {"job_post": job_post}
+
+
+@pytest.mark.asyncio
+async def test_handle_edit_callback_shows_submenu():
+    with patch("src.bot.handlers.settings.allowed_user_id", 123):
+        mock_update = MagicMock()
+        mock_update.effective_user.id = 123
+        mock_update.callback_query.answer = AsyncMock()
+        mock_update.callback_query.data = "edit_draft123"
+        mock_update.callback_query.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.callback_query.message
+        mock_context = MagicMock()
+        mock_context.user_data = {
+            "draft123": {
+                "job_post": JobPost(company="Acme", role="Developer", hr_emails=["hr@acme.com"]),
+                "subject": "Old subject",
+                "body": "Old body",
+            }
+        }
+
+        await handle_edit_callback(mock_update, mock_context)
+
+        mock_update.callback_query.message.reply_text.assert_awaited_once()
+        args = mock_update.callback_query.message.reply_text.call_args.args
+        assert args[0] == "What would you like to edit?"
+        keyboard = mock_update.callback_query.message.reply_text.call_args.kwargs["reply_markup"]
+        assert keyboard.inline_keyboard[0][0].callback_data == "edit_subject_draft123"
+        assert keyboard.inline_keyboard[0][1].callback_data == "edit_body_draft123"
+
+
+@pytest.mark.asyncio
+async def test_handle_edit_subject_callback_prompts_for_subject():
+    with patch("src.bot.handlers.settings.allowed_user_id", 123):
+        mock_update = MagicMock()
+        mock_update.effective_user.id = 123
+        mock_update.callback_query.answer = AsyncMock()
+        mock_update.callback_query.data = "edit_subject_draft123"
+        mock_update.callback_query.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.callback_query.message
+        mock_context = MagicMock()
+        mock_context.user_data = {
+            "draft123": {
+                "job_post": JobPost(company="Acme", role="Developer", hr_emails=["hr@acme.com"]),
+                "subject": "Old subject",
+                "body": "Old body",
+            }
+        }
+
+        await handle_edit_callback(mock_update, mock_context)
+
+        assert mock_context.user_data["waiting_for_edit"] == {
+            "draft_id": "draft123",
+            "field": "subject",
+        }
+        mock_update.callback_query.message.reply_text.assert_awaited_once_with(
+            "📝 Send me the new subject:"
+        )
+
+
+@pytest.mark.asyncio
+async def test_handle_message_updates_subject_in_edit_mode():
+    with patch("src.bot.handlers.settings.allowed_user_id", 123):
+        mock_update = MagicMock()
+        mock_update.effective_user.id = 123
+        mock_update.message.text = "New subject line"
+        mock_update.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.message
+        mock_context = MagicMock()
+        mock_context.user_data = {
+            "waiting_for_edit": {"draft_id": "draft123", "field": "subject"},
+            "draft123": {
+                "job_post": JobPost(company="Acme", role="Developer", hr_emails=["hr@acme.com"]),
+                "subject": "Old subject",
+                "body": "Old body",
+            },
+        }
+
+        await handle_message(mock_update, mock_context)
+
+        assert mock_context.user_data["draft123"]["subject"] == "New subject line"
+        assert mock_context.user_data["draft123"]["body"] == "Old body"
+        assert mock_context.user_data["waiting_for_edit"] is None
+        response = mock_update.message.reply_text.call_args.args[0]
+        assert "**Subject:** New subject line" in response
+        assert "Old body" in response
+
+
+@pytest.mark.asyncio
+async def test_handle_message_updates_body_in_edit_mode():
+    with patch("src.bot.handlers.settings.allowed_user_id", 123):
+        mock_update = MagicMock()
+        mock_update.effective_user.id = 123
+        mock_update.message.text = "New body text"
+        mock_update.message.reply_text = AsyncMock()
+        mock_update.effective_message = mock_update.message
+        mock_context = MagicMock()
+        mock_context.user_data = {
+            "waiting_for_edit": {"draft_id": "draft123", "field": "body"},
+            "draft123": {
+                "job_post": JobPost(company="Acme", role="Developer", hr_emails=["hr@acme.com"]),
+                "subject": "Old subject",
+                "body": "Old body",
+            },
+        }
+
+        await handle_message(mock_update, mock_context)
+
+        assert mock_context.user_data["draft123"]["body"] == "New body text"
+        assert mock_context.user_data["draft123"]["subject"] == "Old subject"
+        assert mock_context.user_data["waiting_for_edit"] is None
